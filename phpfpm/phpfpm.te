@@ -1,0 +1,79 @@
+policy_module(phpfpm, 1.0)
+
+type phpfpm_t;
+type phpfpm_exec_t;
+type phpfpm_tmp_t;
+init_daemon_domain(phpfpm_t, phpfpm_exec_t)
+
+#pid files
+type phpfpm_var_run_t;
+files_pid_file(phpfpm_var_run_t)
+manage_files_pattern(phpfpm_t, phpfpm_var_run_t, phpfpm_var_run_t)
+files_pid_filetrans(phpfpm_t, phpfpm_var_run_t, file)
+
+#tmp files
+files_tmp_file(phpfpm_tmp_t);
+manage_files_pattern(phpfpm_t, phpfpm_tmp_t, phpfpm_tmp_t)
+manage_dirs_pattern(phpfpm_t, phpfpm_tmp_t, phpfpm_tmp_t)
+files_tmp_filetrans(phpfpm_t, phpfpm_tmp_t, {file dir})
+
+#log files
+type phpfpm_log_t;
+logging_log_file(phpfpm_log_t)
+manage_files_pattern(phpfpm_t, phpfpm_log_t, phpfpm_log_t)
+logging_log_filetrans(phpfpm_t, phpfpm_log_t, file)
+
+
+apache_dontaudit_search_modules(phpfpm_t)
+
+#web reading
+apache_manage_sys_content(phpfpm_t)
+#apache_manage_sys_content(phpfpm_exec_t)
+#create sockets for clients to connect to
+allow phpfpm_t self:tcp_socket { setopt read bind create accept write getattr connect getopt listen shutdown};
+allow phpfpm_t self:udp_socket { write getattr connect read create ioctl };
+#lookup dns
+sysnet_dns_name_resolve(phpfpm_t)
+#to allow it to bind on port 9000 default
+corenet_tcp_bind_all_unreserved_ports(phpfpm_t)
+corenet_tcp_bind_generic_node(phpfpm_t)
+corenet_tcp_bind_generic_port(phpfpm_t)
+#KILL
+allow phpfpm_t self:capability { setuid setgid kill };
+allow phpfpm_t self:process signal;
+allow phpfpm_t self:unix_stream_socket accept;
+#read time data
+miscfiles_read_localization(phpfpm_t)
+#read resolv.conf
+sysnet_read_config(phpfpm_t)
+#read random
+dev_read_rand(phpfpm_t)
+dev_read_urand(phpfpm_t)
+#read symlink
+corecmd_search_bin(phpfpm_t)
+corecmd_read_bin_symlinks(phpfpm_t)
+#read sysctls
+kernel_read_kernel_sysctls(phpfpm_t)
+#read nsswitch.conf
+files_read_etc_files(phpfpm_t)
+#allow search on /usr/include/netipx (I don't know if this is really necessary)
+userdom_search_user_home_dirs(phpfpm_t)
+
+#database access
+optional {
+	mysql_tcp_connect(phpfpm_t)
+}
+optional {
+	postgresql_tcp_connect(phpfpm_t)
+}
+#files_search_usr(phpfpm_t)
+#for snmp support   /usr/share/snmp/mibs/HOST-RESOURCES-MIB.txt
+optional {
+	files_search_var_lib(phpfpm_t)
+	snmp_read_snmp_var_lib_files(phpfpm_t)
+	files_read_usr_files(phpfpm_t)
+}
+#allow ldap connections
+optional {
+	corenet_tcp_connect_ldap_port(phpfpm_t)
+}
